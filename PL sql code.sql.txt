@@ -1,0 +1,27 @@
+set serveroutput on 
+declare
+cursor data_cursor is 
+select  distinct user_constraints.table_name, user_cons_columns.column_name ,
+user_constraints.constraint_type, user_constraints.constraint_name
+from user_constraints -- constrain tables
+join user_cons_columns -- constraint column
+on user_constraints.constraint_name = user_cons_columns.constraint_name
+join user_objects
+on user_objects.object_name = user_cons_columns.table_name
+join user_tab_columns
+on user_tab_columns.column_name = user_cons_columns.column_name
+where  user_constraints.constraint_type = 'P'
+and user_objects.object_type = 'TABLE';
+ 
+begin
+for data_table in data_cursor loop 
+execute immediate 'create sequence '||data_table.table_name ||'_seq start with 600 increment by 1 
+maxvalue 99999999';
+
+execute immediate 'create or replace trigger '||data_table.table_name||'_trigg before insert on '||
+                    data_table.table_name||'  for each row 
+                    begin 
+                  :new.'||data_table.column_name||' := '||data_table.table_name||'_seq.nextval; end ;';
+   
+end loop;
+end;
